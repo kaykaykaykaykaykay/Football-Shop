@@ -7,4 +7,4 @@ def show_main(request):
         "student_name": "Khayru Rafa Kartajaya",
         "student_class": "PBP KKI",
     }
-    return render(request, "main/main.html", context)
+    return render(request, "main.html", context)
