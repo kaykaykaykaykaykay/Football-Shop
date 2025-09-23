@@ -1,7 +1,33 @@
-<h1>{{ app_name }}</h1>
+{% extends 'base.html' %}
+{% block content %}
+<h2>Welcome, {{ name }} </h2>
 
-<h4>Name: </h4>
-<p>{{ student_name }}</p>
+<p>
+  <a href="{% url 'main:create_product' %}">
+    <button>+ Add Product</button>
+  </a>
+</p>
 
-<h4>Class: </h4>
-<p>{{ student_class }}</p>
+<hr>
+
+{% if not products %}
+  <p>No product found.</p>
+{% else %}
+  {% for p in products %}
+    <div class="card">
+      <h3>{{ p.name }}</h3>
+      <p><b>Category:</b> {{ p.get_category_display|default:p.category }}
+         {% if p.is_featured %} | <b>Featured</b>{% endif %}
+      </p>
+      <p><b>Price:</b> Rp {{ p.price }}</p>
+      {% if p.thumbnail %}
+        <img src="{{ p.thumbnail }}" alt="thumb" width="150" height="100"><br/>
+      {% endif %}
+      <p>{{ p.description|truncatewords:20 }}...</p>
+      <a href="{% url 'main:show_product' p.id %}">
+        <button>Detail</button>
+      </a>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock content %}
