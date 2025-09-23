@@ -7,7 +7,10 @@
     <button>+ Add Product</button>
   </a>
 </p>
-
+<a href="{% url 'main:logout' %}">
+    <button>Logout</button>
+</a>
+<h5>Last login session: {{ last_login }}</h5>
 <hr>
 
 {% if not products %}
@@ -16,14 +19,14 @@
   {% for p in products %}
     <div class="card">
       <h3>{{ p.name }}</h3>
-      <p><b>Category:</b> {{ p.get_category_display|default:p.category }}
+      <p><b>Category:</b> {{ p.get_category_display }}
          {% if p.is_featured %} | <b>Featured</b>{% endif %}
       </p>
       <p><b>Price:</b> Rp {{ p.price }}</p>
       {% if p.thumbnail %}
         <img src="{{ p.thumbnail }}" alt="thumb" width="150" height="100"><br/>
       {% endif %}
-      <p>{{ p.description|truncatewords:20 }}...</p>
+      <p>{{ p.description }}...</p>
       <a href="{% url 'main:show_product' p.id %}">
         <button>Detail</button>
       </a>
