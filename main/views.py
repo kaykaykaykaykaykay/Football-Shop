@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.core import serializers
-from main.models import Product
+from main.models import Product, Employee
 from main.forms import ProductForm
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
@@ -93,3 +93,11 @@ def logout_user(request):
     response = HttpResponseRedirect(reverse('main:login'))
     response.delete_cookie('last_login')
     return response
+
+def add_employee(request):
+    employee = Employee.objects.create(
+        name = "Khayru",
+        age = 21,
+        persona = "not the smartest"
+    )
+    return render(request, "base.html", context)
