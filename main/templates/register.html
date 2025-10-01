@@ -5,28 +5,36 @@
 {% endblock meta %}
 
 {% block content %}
+<div class="login-wrapper">
+  <div class="login-box">
+    <h2>REGISTER</h2>
 
-<div>
-  <h1>Register</h1>
+    <form method="POST">
+      {% csrf_token %}
+      <!-- Render form fields without table -->
+      {% for field in form %}
+        <div class="form-group">
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.errors %}
+            <p class="error">{{ field.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit">Sign Up</button>
+    </form>
 
-  <form method="POST">
-    {% csrf_token %}
-    <table>
-      {{ form.as_table }}
-      <tr>
-        <td></td>
-        <td><input type="submit" name="submit" value="Register" /></td>
-      </tr>
-    </table>
-  </form>
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+        <li class="message {{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
 
-  {% if messages %}
-  <ul>
-    {% for message in messages %}
-    <li>{{ message }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+    <p class="signup-text">
+      Already have an account? <a href="{% url 'main:login' %}">Log in</a>
+    </p>
+  </div>
 </div>
-
 {% endblock content %}

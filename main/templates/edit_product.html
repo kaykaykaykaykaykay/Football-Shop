@@ -4,7 +4,7 @@
   <div class="max-w-3xl mx-auto px-4 py-10">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold tracking-wide">Add Product</h1>
+        <h1 class="text-3xl font-bold tracking-wide">Edit Product</h1>
         <p class="text-sm text-[#d0d3f0]">Signed in as {{ request.user.username }}</p>
       </div>
       <a href="{% url 'main:show_main' %}">
@@ -20,7 +20,7 @@
           <tr>
             <td></td>
             <td class="pt-4">
-              <input type="submit" value="Add" class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold cursor-pointer"/>
+              <input type="submit" value="Update" class="w-full sm:w-auto px-6 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold cursor-pointer"/>
             </td>
           </tr>
         </table>

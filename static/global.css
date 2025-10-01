@@ -1,0 +1,108 @@
+/* Page background */
+.login-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #2C3152; /* dark blue background */
+    font-family: 'Arial', sans-serif;
+  }
+  
+  /* Login card */
+  .login-box {
+    background-color: #3C416A; /* slightly lighter blue */
+    padding: 3rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    width: 350px;
+    text-align: center;
+  }
+  
+  /* Title */
+  .login-box h2 {
+    color: #fff;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    letter-spacing: 2px;
+  }
+  
+  /* Inputs */
+  .login-box input {
+    display: block;
+    width: 100%;
+    margin-bottom: 1.2rem;
+    padding: 0.75rem 1rem;
+    border-radius: 9999px; /* pill shape */
+    border: none;
+    background-color: #5A5F8D;
+    color: #fff;
+    font-size: 1rem;
+  }
+  
+  .login-box input::placeholder {
+    color: #d0d3f0;
+  }
+  
+  /* Button */
+  .login-box button {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 9999px;
+    border: none;
+    background-color: #FF9F66; /* orange accent */
+    color: #fff;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .login-box button:hover {
+    background-color: #ff8442;
+  }
+  
+  /* Signup text */
+  .signup-text {
+    margin-top: 1.5rem;
+    color: #d0d3f0;
+    font-size: 0.9rem;
+  }
+  
+  .signup-text a {
+    color: #FF9F66;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  
+  .signup-text a:hover {
+    text-decoration: underline;
+  }
+  
+  .messages {
+    margin-bottom: 1rem;
+    padding: 0;
+    list-style: none;
+  }
+  
+  .message {
+    background: #444a77;
+    color: #fff;
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .message.error {
+    background: #e53e3e; /* red for error */
+  }
+  
+  .message.success {
+    background: #38a169; /* green for success */
+  }
+  
+  .message.info {
+    background: #3182ce; /* blue for info */
+  }
+  

@@ -1,36 +1,56 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Welcome, {{ name }} </h2>
-
-<p>
-  <a href="{% url 'main:create_product' %}">
-    <button>+ Add Product</button>
-  </a>
-</p>
-<a href="{% url 'main:logout' %}">
-    <button>Logout</button>
-</a>
-<h5>Last login session: {{ last_login }}</h5>
-<hr>
-
-{% if not products %}
-  <p>No product found.</p>
-{% else %}
-  {% for p in products %}
-    <div class="card">
-      <h3>{{ p.name }}</h3>
-      <p><b>Category:</b> {{ p.get_category_display }}
-         {% if p.is_featured %} | <b>Featured</b>{% endif %}
-      </p>
-      <p><b>Price:</b> Rp {{ p.price }}</p>
-      {% if p.thumbnail %}
-        <img src="{{ p.thumbnail }}" alt="thumb" width="150" height="100"><br/>
-      {% endif %}
-      <p>{{ p.description }}...</p>
-      <a href="{% url 'main:show_product' p.id %}">
-        <button>Detail</button>
-      </a>
+{% include 'navbar.html' %}
+<div class="min-h-screen bg-[#2C3152] text-white">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h2 class="text-3xl font-bold tracking-wide">Welcome, {{ request.user.username }}</h2>
+        <p class="text-sm text-[#d0d3f0]">Last login: {{ last_login }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'main:create_product' %}" class="inline-block">
+          <button class="px-5 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">+ Add Product</button>
+        </a>
+        <a href="{% url 'main:logout' %}" class="inline-block">
+          <button class="px-5 py-2 rounded-full bg-[#5A5F8D] hover:bg-[#515689] font-semibold">Logout</button>
+        </a>
+      </div>
     </div>
-  {% endfor %}
-{% endif %}
+
+    {% if not products %}
+      <div class="bg-[#3C416A] rounded-xl shadow-xl p-8 text-center">
+        <p class="text-[#d0d3f0]">No product found.</p>
+      </div>
+    {% else %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for p in products %}
+          <div class="bg-[#3C416A] rounded-xl shadow-xl p-5">
+            <h3 class="text-xl font-semibold mb-1">{{ p.name }}</h3>
+            <p class="text-sm text-[#d0d3f0] mb-3">
+              <span class="font-bold text-white">Category:</span> {{ p.get_category_display }}
+              {% if p.is_featured %}
+                <span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#FF9F66] text-white align-middle">Featured</span>
+              {% endif %}
+            </p>
+            <p class="mb-3"><span class="font-bold">Price:</span> Rp {{ p.price }}</p>
+            {% if p.thumbnail %}
+              <img src="{{ p.thumbnail }}" alt="thumb" class="w-full h-40 object-cover rounded-lg mb-3" />
+            {% endif %}
+            <p class="text-sm text-[#d0d3f0] mb-4">{{ p.description }}</p>
+            <a href="{% url 'main:show_product' p.id %}">
+              <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Detail</button>
+            </a>
+            <a href="{% url 'main:edit_product' p.id %}">
+              <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Edit</button>
+            </a>
+            <a href="{% url 'main:delete_product' p.id %}">
+              <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Delete</button>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock content %}
