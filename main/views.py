@@ -13,7 +13,10 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
+import time
 
+# Simple in-memory cache to track recent requests
+recent_requests = {}
 
 @login_required(login_url='/login')
 def show_main(request):
@@ -244,6 +247,31 @@ def ajax_create_product(request):
         category = data.get('category', '').strip()
         thumbnail = data.get('thumbnail', '').strip()
         is_featured = data.get('is_featured', False)
+        request_id = data.get('request_id')
+        
+        # Log the request for debugging
+        print(f"Creating product: {name} (Request ID: {request_id})")
+        
+        # Check for duplicate requests within 5 seconds
+        current_time = time.time()
+        request_key = f"{name}_{description}_{request_id}"
+        
+        if request_key in recent_requests:
+            time_diff = current_time - recent_requests[request_key]
+            if time_diff < 5:  # 5 seconds
+                print(f"Duplicate request blocked: {request_key}")
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Duplicate request detected. Please wait a moment and try again.'
+                }, status=400)
+        
+        # Store this request
+        recent_requests[request_key] = current_time
+        
+        # Clean old requests (older than 10 seconds)
+        for key in list(recent_requests.keys()):
+            if current_time - recent_requests[key] > 10:
+                del recent_requests[key]
         
         # Validation
         if not name or not description or not price or not category:
@@ -256,6 +284,18 @@ def ajax_create_product(request):
             return JsonResponse({
                 'success': False, 
                 'error': 'Price must be a positive number'
+            }, status=400)
+        
+        # Check for potential duplicates (same name and description)
+        existing_product = Product.objects.filter(
+            name__iexact=name, 
+            description__iexact=description
+        ).first()
+        
+        if existing_product:
+            return JsonResponse({
+                'success': False, 
+                'error': 'A product with this name and description already exists'
             }, status=400)
         
         # Create product

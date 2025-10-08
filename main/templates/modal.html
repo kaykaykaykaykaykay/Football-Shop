@@ -83,6 +83,17 @@
 
       setTimeout(() => {
         modal.classList.add('hidden');
+        // Reset form when modal is closed
+        const form = document.getElementById('productForm');
+        if (form) {
+          form.reset();
+        }
+        // Reset submit button state
+        const submitBtn = document.getElementById('submitProduct');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add Product';
+        }
       }, 150); 
   }
 
@@ -90,9 +101,21 @@
   document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('productForm');
     const submitBtn = document.getElementById('submitProduct');
+    let isSubmitting = false;
+    let lastSubmissionTime = 0;
     
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
+      
+      // Prevent duplicate submissions within 3 seconds
+      const currentTime = Date.now();
+      if (isSubmitting || (currentTime - lastSubmissionTime) < 3000) {
+        console.log('Submission blocked - too soon or already submitting');
+        return;
+      }
+      
+      lastSubmissionTime = currentTime;
+      isSubmitting = true;
       
       const formData = new FormData(form);
       const productData = {
@@ -101,12 +124,14 @@
         price: parseInt(formData.get('price')),
         category: formData.get('category'),
         thumbnail: formData.get('thumbnail'),
-        is_featured: formData.has('is_featured')
+        is_featured: formData.has('is_featured'),
+        request_id: currentTime // Add unique request ID
       };
 
       // Validate required fields
       if (!productData.name || !productData.description || !productData.price || !productData.category) {
-        alert('Please fill in all required fields');
+        showToast('Validation Error', 'Please fill in all required fields', 'error');
+        isSubmitting = false;
         return;
       }
 
@@ -131,7 +156,11 @@
             form.reset();
             showToast('Success!', data.message || 'Product created successfully!', 'success');
             // Refresh the page to show new product
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => {
+                if (window.loadProducts) {
+                    window.loadProducts();
+                }
+            }, 800);
           } else {
             showToast('Error', data.error || 'Failed to add product', 'error');
           }
@@ -143,9 +172,12 @@
         console.error('Error:', error);
         showToast('Network Error', 'Please check your connection and try again.', 'error');
       } finally {
-        // Reset button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Add Product';
+        // Reset button state and allow new submissions after delay
+        setTimeout(() => {
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add Product';
+        }, 3000);
       }
     });
   });
