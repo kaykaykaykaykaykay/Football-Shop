@@ -2,15 +2,101 @@
 {% block content %}
 <p><a href="{% url 'main:show_main' %}"><button>← Back to List</button></a></p>
 
-<h1>{{ product.name }}</h1>
-<p><b>Category:</b> {{ product.get_category_display|default:product.category }}
-   {% if product.is_featured %} | <b>Featured</b>{% endif %}
-</p>
-<p><b>Price:</b> {{ product.price }}</p>
+<div id="product-loading">Loading product...</div>
+<div id="product-error" class="hidden" style="color:#ef4444">Failed to load product.</div>
 
-{% if product.thumbnail %}
-  <img src="{{ product.thumbnail }}" alt="thumbnail" width="300"><br/><br/>
-{% endif %}
+<div id="product-detail">
+  <h1 id="pd-name">{{ product.name }}</h1>
+  <p>
+    <b>Category:</b> <span id="pd-category">{{ product.get_category_display|default:product.category }}</span>
+    {% if product.is_featured %} | <b id="pd-featured">Featured</b>{% else %}<b id="pd-featured" class="hidden">Featured</b>{% endif %}
+  </p>
+  <p><b>Price:</b> <span id="pd-price">{{ product.price }}</span></p>
 
-<p>{{ product.description }}</p>
+  <div id="pd-thumb-wrapper">
+    {% if product.thumbnail %}
+      <img id="pd-thumb" src="{{ product.thumbnail }}" alt="thumbnail" width="300"><br/><br/>
+    {% else %}
+      <img id="pd-thumb" src="" alt="thumbnail" width="300" class="hidden"><br/><br/>
+    {% endif %}
+  </div>
+
+  <p id="pd-desc">{{ product.description }}</p>
+</div>
+
+<script type="module">
+  const loadingEl = document.getElementById('product-loading');
+  const errorEl = document.getElementById('product-error');
+  const nameEl = document.getElementById('pd-name');
+  const categoryEl = document.getElementById('pd-category');
+  const featuredEl = document.getElementById('pd-featured');
+  const priceEl = document.getElementById('pd-price');
+  const thumbEl = document.getElementById('pd-thumb');
+  const descEl = document.getElementById('pd-desc');
+
+  const categoryLabelMap = {
+    jersey: 'Jersey',
+    boots: 'Boots',
+    ball: 'Ball',
+    accessory: 'Accessory',
+  };
+
+  function getProductIdFromPath() {
+    const m = window.location.pathname.match(/\/product\/([^/]+)\//);
+    return m ? m[1] : null;
+  }
+
+  function toCurrency(value) {
+    try { return new Intl.NumberFormat('id-ID').format(value); } catch { return value; }
+  }
+
+  async function loadProduct() {
+    const id = getProductIdFromPath();
+    if (!id) {
+      loadingEl.classList.add('hidden');
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const urlTemplate = `{% url 'main:show_json_by_id' '00000000-0000-0000-0000-000000000000' %}`;
+      const endpoint = urlTemplate.replace('00000000-0000-0000-0000-000000000000', id);
+      const res = await fetch(endpoint, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Network');
+
+      const data = await res.json();
+      // Django serializers JSON => array with one object {model, pk, fields}
+      const obj = Array.isArray(data) && data.length ? data[0] : null;
+      if (!obj) throw new Error('NotFound');
+      const fields = obj.fields || {};
+
+      // Update UI
+      nameEl.textContent = fields.name || '';
+      categoryEl.textContent = categoryLabelMap[fields.category] || fields.category || '';
+      if (fields.is_featured) {
+        featuredEl.classList.remove('hidden');
+      } else {
+        featuredEl.classList.add('hidden');
+      }
+      priceEl.textContent = `Rp ${toCurrency(fields.price)}`;
+      descEl.textContent = fields.description || '';
+
+      if (fields.thumbnail) {
+        thumbEl.src = fields.thumbnail;
+        thumbEl.classList.remove('hidden');
+      } else {
+        thumbEl.src = '';
+        thumbEl.classList.add('hidden');
+      }
+
+      loadingEl.classList.add('hidden');
+    } catch (e) {
+      loadingEl.classList.add('hidden');
+      errorEl.classList.remove('hidden');
+      console.error(e);
+    }
+  }
+
+  loadProduct();
+</script>
 {% endblock content %}

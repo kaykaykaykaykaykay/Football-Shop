@@ -9,48 +9,250 @@
         <p class="text-sm text-[#d0d3f0]">Last login: {{ last_login }}</p>
       </div>
       <div class="flex items-center gap-3">
-        <a href="{% url 'main:create_product' %}" class="inline-block">
-          <button class="px-5 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">+ Add Product</button>
-        </a>
-        <a href="{% url 'main:logout' %}" class="inline-block">
-          <button class="px-5 py-2 rounded-full bg-[#5A5F8D] hover:bg-[#515689] font-semibold">Logout</button>
-        </a>
+        <button onclick="showModal()" class="px-5 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">+ Add Product</button>
+        <button onclick="refreshProducts()" class="px-5 py-2 rounded-full bg-[#4CAF50] hover:bg-[#45a049] font-semibold">🔄 Refresh</button>
+        <button onclick="logoutUser()" class="px-5 py-2 rounded-full bg-[#5A5F8D] hover:bg-[#515689] font-semibold">Logout</button>
       </div>
     </div>
 
-    {% if not products %}
-      <div class="bg-[#3C416A] rounded-xl shadow-xl p-8 text-center">
-        <p class="text-[#d0d3f0]">No product found.</p>
-      </div>
-    {% else %}
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for p in products %}
+    <div id="loading" class="bg-[#3C416A] rounded-xl shadow-xl p-8 text-center">
+      <p class="text-[#d0d3f0]">Loading products...</p>
+    </div>
+
+    <div id="empty-state" class="hidden bg-[#3C416A] rounded-xl shadow-xl p-8 text-center">
+      <p class="text-[#d0d3f0]">No product found.</p>
+    </div>
+
+    <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <script type="module">
+      // Configuration
+      const PRODUCTS_ENDPOINT = '{% url "main:show_json" %}';
+
+      // DOM Elements (required)
+      const loadingEl = document.getElementById('loading');
+      const emptyEl = document.getElementById('empty-state');
+      const gridEl = document.getElementById('products-grid');
+
+      // Optional filter controls (add these elements in your template if desired)
+      const searchInput = document.getElementById('product-search');
+      const categorySelect = document.getElementById('product-category');
+      const featuredOnlyCheckbox = document.getElementById('product-featured-only');
+      const sortSelect = document.getElementById('product-sort'); // e.g., price_asc, price_desc, name_asc
+      const resetButton = document.getElementById('product-filter-reset');
+
+      // State
+      let allProducts = [];
+      let filters = {
+        search: '',
+        category: 'all',
+        featuredOnly: false,
+        sort: 'none',
+      };
+
+      // Utilities
+      const categoryLabelMap = {
+        jersey: 'Jersey',
+        boots: 'Boots',
+        ball: 'Ball',
+        accessory: 'Accessory',
+      };
+
+      function toCurrency(value) {
+        if (value === null || value === undefined) return '';
+        try { return new Intl.NumberFormat('id-ID').format(value); } catch { return value; }
+      }
+
+      function getCategoryLabel(code) {
+        return categoryLabelMap[code] || code || '';
+      }
+
+      function buildCardHtml(p) {
+        const id = p.id;
+        const name = p.name ?? '';
+        const description = p.content ?? '';
+        const category = getCategoryLabel(p.category);
+        const price = toCurrency(p.price);
+        const thumbnail = p.thumbnail ?? '';
+        const isFeatured = Boolean(p.is_featured);
+
+        const detailUrl = `/product/${id}/`;
+        const editUrl = `/product/${id}/edit/`;
+        const deleteUrl = `/product/${id}/delete/`;
+
+        return `
           <div class="bg-[#3C416A] rounded-xl shadow-xl p-5">
-            <h3 class="text-xl font-semibold mb-1">{{ p.name }}</h3>
+            <h3 class="text-xl font-semibold mb-1">${name}</h3>
             <p class="text-sm text-[#d0d3f0] mb-3">
-              <span class="font-bold text-white">Category:</span> {{ p.get_category_display }}
-              {% if p.is_featured %}
-                <span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#FF9F66] text-white align-middle">Featured</span>
-              {% endif %}
+              <span class="font-bold text-white">Category:</span> ${category}
+              ${isFeatured ? '<span class="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#FF9F66] text-white align-middle">Featured</span>' : ''}
             </p>
-            <p class="mb-3"><span class="font-bold">Price:</span> Rp {{ p.price }}</p>
-            {% if p.thumbnail %}
-              <img src="{{ p.thumbnail }}" alt="thumb" class="w-full h-40 object-cover rounded-lg mb-3" />
-            {% endif %}
-            <p class="text-sm text-[#d0d3f0] mb-4">{{ p.description }}</p>
-            <a href="{% url 'main:show_product' p.id %}">
+            <p class="mb-3"><span class="font-bold">Price:</span> Rp ${price}</p>
+            ${thumbnail ? `<img src="${thumbnail}" alt="thumb" class="w-full h-40 object-cover rounded-lg mb-3" />` : ''}
+            <p class="text-sm text-[#d0d3f0] mb-4">${description}</p>
+            <a href="${detailUrl}">
               <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Detail</button>
             </a>
-            <a href="{% url 'main:edit_product' p.id %}">
-              <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Edit</button>
-            </a>
-            <a href="{% url 'main:delete_product' p.id %}">
-              <button class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Delete</button>
-            </a>
+                <button onclick="showEditModal('${id}')" class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Edit</button>
+            <button onclick="showDeleteModal('${id}', {name: '${name}', category: '${category}', price: ${p.price}, thumbnail: '${thumbnail}'})" class="w-full px-4 py-2 rounded-full bg-[#FF9F66] hover:bg-[#ff8442] font-semibold">Delete</button>
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
+        `;
+      }
+
+      function render(products) {
+        if (!Array.isArray(products) || products.length === 0) {
+          gridEl.innerHTML = '';
+          emptyEl.classList.remove('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        gridEl.innerHTML = products.map(buildCardHtml).join('');
+      }
+
+      function applyFilters() {
+        let result = [...allProducts];
+
+        // text search (name/description)
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          result = result.filter(p =>
+            (p.name || '').toLowerCase().includes(q) ||
+            (p.content || '').toLowerCase().includes(q)
+          );
+        }
+
+        // category
+        if (filters.category && filters.category !== 'all') {
+          result = result.filter(p => p.category === filters.category);
+        }
+
+        // featured only
+        if (filters.featuredOnly) {
+          result = result.filter(p => Boolean(p.is_featured));
+        }
+
+        // sort
+        switch (filters.sort) {
+          case 'price_asc':
+            result.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+            break;
+          case 'price_desc':
+            result.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+            break;
+          case 'name_asc':
+            result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+          case 'name_desc':
+            result.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+            break;
+          default:
+            break;
+        }
+
+        render(result);
+      }
+
+      async function loadProducts() {
+        loadingEl.classList.remove('hidden');
+        try {
+          const response = await fetch(PRODUCTS_ENDPOINT, { credentials: 'same-origin' });
+          if (!response.ok) throw new Error('Failed to load');
+          const data = await response.json();
+          allProducts = Array.isArray(data) ? data : [];
+          loadingEl.classList.add('hidden');
+          applyFilters();
+        } catch (err) {
+          loadingEl.classList.remove('hidden');
+          loadingEl.innerHTML = '<p class="text-red-300">Failed to load products.</p>';
+          console.error(err);
+        }
+      }
+
+      function wireEvents() {
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => { filters.search = e.target.value.trim(); applyFilters(); });
+        }
+        if (categorySelect) {
+          categorySelect.addEventListener('change', (e) => { filters.category = e.target.value; applyFilters(); });
+        }
+        if (featuredOnlyCheckbox) {
+          featuredOnlyCheckbox.addEventListener('change', (e) => { filters.featuredOnly = e.target.checked; applyFilters(); });
+        }
+        if (sortSelect) {
+          sortSelect.addEventListener('change', (e) => { filters.sort = e.target.value; applyFilters(); });
+        }
+        if (resetButton) {
+          resetButton.addEventListener('click', () => {
+            filters = { search: '', category: 'all', featuredOnly: false, sort: 'none' };
+            if (searchInput) searchInput.value = '';
+            if (categorySelect) categorySelect.value = 'all';
+            if (featuredOnlyCheckbox) featuredOnlyCheckbox.checked = false;
+            if (sortSelect) sortSelect.value = 'none';
+            applyFilters();
+          });
+        }
+      }
+
+      wireEvents();
+      loadProducts();
+      
+      // Make functions globally available
+      window.loadProducts = loadProducts;
+    </script>
+
+    <script>
+      // Global refresh function
+      function refreshProducts() {
+        const loadingEl = document.getElementById('loading');
+        const emptyEl = document.getElementById('empty-state');
+        const gridEl = document.getElementById('products-grid');
+        
+        // Show loading state
+        loadingEl.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
+        gridEl.innerHTML = '';
+        
+        // Reload products
+        window.loadProducts();
+      }
+      
+      // Make refreshProducts globally available
+      window.refreshProducts = refreshProducts;
+      
+      // Logout function
+      async function logoutUser() {
+        try {
+          const response = await fetch('{% url "main:ajax_logout" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            showToast('Goodbye!', data.message, 'success');
+            setTimeout(() => {
+              window.location.href = data.redirect_url;
+            }, 1000);
+          } else {
+            showToast('Error', data.error || 'Failed to logout', 'error');
+          }
+        } catch (error) {
+          console.error('Logout error:', error);
+          showToast('Network Error', 'Please check your connection and try again.', 'error');
+        }
+      }
+      
+      // Make functions globally available
+      window.refreshProducts = refreshProducts;
+      window.logoutUser = logoutUser;
+    </script>
   </div>
 </div>
+
+{% include 'modal.html' %}
+{% include 'modal_edit.html' %}
+{% include 'modal_delete.html' %}
 {% endblock content %}

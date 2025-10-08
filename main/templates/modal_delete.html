@@ -1,0 +1,148 @@
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 z-50 w-full flex items-center justify-center bg-gray-800 bg-opacity-50">
+    <div id="deleteModalContent" class="bg-white rounded-lg shadow-lg w-5/6 sm:w-3/5 md:w-1/2 lg:w-2/5 xl:w-1/3 max-h-screen overflow-y-auto">
+      <!-- Modal header -->
+      <div class="flex items-center justify-between p-4 border-b">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">
+            Delete Product
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">This action cannot be undone</p>
+        </div>
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" onclick="hideDeleteModal()">
+          <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <!-- Modal body -->
+      <div class="px-6 py-4">
+        <div class="flex items-center mb-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-lg font-medium text-gray-900">Are you sure?</h4>
+            <p class="text-sm text-gray-500 mt-1">You are about to delete this product permanently. This action cannot be undone.</p>
+          </div>
+        </div>
+        
+        <div id="product-info" class="bg-gray-50 rounded-lg p-4 mb-4">
+          <div class="flex items-center space-x-3">
+            <img id="delete-product-thumbnail" src="" alt="Product thumbnail" class="w-16 h-16 object-cover rounded-lg" style="display: none;">
+            <div class="flex-1">
+              <h5 id="delete-product-name" class="font-medium text-gray-900"></h5>
+              <p id="delete-product-category" class="text-sm text-gray-500"></p>
+              <p id="delete-product-price" class="text-sm font-medium text-gray-900"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div class="flex flex-col sm:flex-row gap-4 p-6 border-t border-gray-200 rounded-b">
+        <button type="button" id="deleteCancelButton" class="order-2 sm:order-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors text-center" onclick="hideDeleteModal()">Cancel</button>
+        <button type="button" id="confirmDeleteButton" class="order-1 sm:order-2 flex-1 bg-red-600 text-white px-6 py-3 rounded-md font-medium hover:bg-red-700 transition-colors">Delete Product</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Delete Modal script -->
+<script type="module">
+  let productToDelete = null;
+
+  function showDeleteModal(productId, productData) {
+      productToDelete = productId;
+      const modal = document.getElementById('deleteModal');
+      const modalContent = document.getElementById('deleteModalContent');
+
+      // Populate product info
+      document.getElementById('delete-product-name').textContent = productData.name || 'Unknown Product';
+      document.getElementById('delete-product-category').textContent = `Category: ${productData.category || 'Unknown'}`;
+      document.getElementById('delete-product-price').textContent = `Price: Rp ${productData.price ? new Intl.NumberFormat('id-ID').format(productData.price) : '0'}`;
+      
+      const thumbnailEl = document.getElementById('delete-product-thumbnail');
+      if (productData.thumbnail) {
+        thumbnailEl.src = productData.thumbnail;
+        thumbnailEl.style.display = 'block';
+      } else {
+        thumbnailEl.style.display = 'none';
+      }
+
+      modal.classList.remove('hidden'); 
+      setTimeout(() => {
+        modalContent.classList.remove('opacity-0', 'scale-95');
+        modalContent.classList.add('opacity-100', 'scale-100');
+      }, 50); 
+  }
+
+  function hideDeleteModal() {
+      const modal = document.getElementById('deleteModal');
+      const modalContent = document.getElementById('deleteModalContent');
+
+      modalContent.classList.remove('opacity-100', 'scale-100');
+      modalContent.classList.add('opacity-0', 'scale-95');
+
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        productToDelete = null;
+      }, 150); 
+  }
+
+  // AJAX delete functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const confirmDeleteBtn = document.getElementById('confirmDeleteButton');
+    
+    confirmDeleteBtn.addEventListener('click', async function() {
+      if (!productToDelete) {
+        alert('No product selected for deletion');
+        return;
+      }
+
+      // Set loading state
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.textContent = 'Deleting...';
+
+      try {
+        const urlTemplate = `{% url 'main:ajax_delete_product' '00000000-0000-0000-0000-000000000000' %}`;
+        const endpoint = urlTemplate.replace('00000000-0000-0000-0000-000000000000', productToDelete);
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Success - close modal and show toast
+            hideDeleteModal();
+            showToast('Success!', data.message || 'Product deleted successfully!', 'success');
+            // Refresh the page to show updated product list
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            showToast('Error', data.error || 'Failed to delete product', 'error');
+          }
+        } else {
+          const errorData = await response.json();
+          showToast('Error', errorData.error || 'Failed to delete product', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('Network Error', 'Please check your connection and try again.', 'error');
+      } finally {
+        // Reset button state
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.textContent = 'Delete Product';
+      }
+    });
+  });
+
+  // Make functions globally available
+  window.showDeleteModal = showDeleteModal;
+  window.hideDeleteModal = hideDeleteModal;
+</script>

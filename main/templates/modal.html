@@ -1,0 +1,156 @@
+<!-- Modal -->
+<div id="crudModal" class="hidden fixed inset-0 z-50 w-full flex items-center justify-center bg-gray-800 bg-opacity-50">
+    <div id="crudModalContent" class="bg-white rounded-lg shadow-lg w-5/6 sm:w-3/5 md:w-1/2 lg:w-2/5 xl:w-1/3 max-h-screen overflow-y-auto">
+      <!-- Modal header -->
+      <div class="flex items-center justify-between p-4 border-b">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">
+            Add New Product
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">Add a new football product to your shop</p>
+        </div>
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" onclick="hideModal()">
+          <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <!-- Modal body -->
+      <div class="px-6 py-4 space-y-6 form-style">
+        <form id="productForm">
+          <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700">Product Name</label>
+            <input type="text" id="name" name="name" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter product name" required>
+          </div>
+          <div class="mb-4">
+            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea id="description" name="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter product description" required></textarea>
+          </div>
+          <div class="mb-4">
+            <label for="price" class="block text-sm font-medium text-gray-700">Price (Rp)</label>
+            <input type="number" id="price" name="price" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Enter price" min="0" required>
+          </div>
+          <div class="mb-4">
+            <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+            <select id="category" name="category" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" required>
+              <option value="">Choose a category</option>
+              <option value="jersey">Jersey</option>
+              <option value="boots">Boots</option>
+              <option value="ball">Ball</option>
+              <option value="accessory">Accessory</option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label for="thumbnail" class="block text-sm font-medium text-gray-700">Thumbnail URL</label>
+            <input type="url" id="thumbnail" name="thumbnail" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="https://example.com/image.jpg">
+          </div>
+          <div class="mb-4">
+            <div class="flex items-center">
+              <input id="is_featured" name="is_featured" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
+              <label for="is_featured" class="ml-2 text-sm font-medium text-gray-900">Featured Product</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <!-- Modal footer -->
+      <div class="flex flex-col sm:flex-row gap-4 p-6 border-t border-gray-200 rounded-b">
+        <button type="button" id="cancelButton" class="order-2 sm:order-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors text-center" onclick="hideModal()">Cancel</button>
+        <button type="submit" id="submitProduct" form="productForm" class="order-1 sm:order-2 flex-1 bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">Add Product</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal script -->
+<script type="module">
+  function showModal() {
+      const modal = document.getElementById('crudModal');
+      const modalContent = document.getElementById('crudModalContent');
+
+      modal.classList.remove('hidden'); 
+      setTimeout(() => {
+        modalContent.classList.remove('opacity-0', 'scale-95');
+        modalContent.classList.add('opacity-100', 'scale-100');
+      }, 50); 
+  }
+
+  function hideModal() {
+      const modal = document.getElementById('crudModal');
+      const modalContent = document.getElementById('crudModalContent');
+
+      modalContent.classList.remove('opacity-100', 'scale-100');
+      modalContent.classList.add('opacity-0', 'scale-95');
+
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 150); 
+  }
+
+  // AJAX form submission
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('productForm');
+    const submitBtn = document.getElementById('submitProduct');
+    
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const productData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        price: parseInt(formData.get('price')),
+        category: formData.get('category'),
+        thumbnail: formData.get('thumbnail'),
+        is_featured: formData.has('is_featured')
+      };
+
+      // Validate required fields
+      if (!productData.name || !productData.description || !productData.price || !productData.category) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Set loading state
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding Product...';
+
+      try {
+        const response = await fetch('{% url "main:ajax_create_product" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(productData)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Success - close modal and show toast
+            hideModal();
+            form.reset();
+            showToast('Success!', data.message || 'Product created successfully!', 'success');
+            // Refresh the page to show new product
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            showToast('Error', data.error || 'Failed to add product', 'error');
+          }
+        } else {
+          const errorData = await response.json();
+          showToast('Error', errorData.error || 'Failed to add product', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('Network Error', 'Please check your connection and try again.', 'error');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Product';
+      }
+    });
+  });
+
+  // Make functions globally available
+  window.showModal = showModal;
+  window.hideModal = hideModal;
+</script>

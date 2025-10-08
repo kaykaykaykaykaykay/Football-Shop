@@ -8,8 +8,12 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import datetime
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+
 
 @login_required(login_url='/login')
 def show_main(request):
@@ -41,9 +45,23 @@ def show_xml(request):
     return HttpResponse(xml_data, content_type="application/xml")
 
 def show_json(request):
-    data = Product.objects.all()
-    json_data = serializers.serialize("json", data)
-    return HttpResponse(json_data, content_type="application/json")
+    product_list = Product.objects.all()
+    data = [
+        {
+            'id': str(product.id),
+            'name': product.name,
+            'content': product.description,
+            'category': product.category,
+            'thumbnail': product.thumbnail,
+            'price': product.price,
+            'created_at': product.created_at.isoformat() if product.created_at else None,
+            'is_featured': product.is_featured,
+            'user_id': product.id,
+        }
+        for product in product_list
+    ]
+
+    return JsonResponse(data, safe=False)
 
 def show_xml_by_id(request, id):
     data = Product.objects.filter(pk=id)
@@ -54,11 +72,11 @@ def show_xml_by_id(request, id):
 
 def show_json_by_id(request, id):
     try:
-        obj = Product.objects.get(pk=id)
+        product = Product.objects.get(pk=id)
+        json_data = serializers.serialize("json", [product])
+        return HttpResponse(json_data, content_type="application/json")
     except Product.DoesNotExist:
-        return HttpResponse(status=404)
-    json_data = serializers.serialize("json", [obj])
-    return HttpResponse(json_data, content_type="application/json")
+        return JsonResponse({'detail': 'Not found'}, status=404)
 
 def register(request):
     form = UserCreationForm()
@@ -94,6 +112,232 @@ def logout_user(request):
     response.delete_cookie('last_login')
     return response
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_logout(request):
+    try:
+        logout(request)
+        response = JsonResponse({
+            'success': True, 
+            'message': 'Logged out successfully!',
+            'redirect_url': reverse('main:login')
+        })
+        response.delete_cookie('last_login')
+        return response
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during logout'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_login(request):
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        if not username or not password:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Username and password are required'
+            }, status=400)
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            response = JsonResponse({
+                'success': True, 
+                'redirect_url': reverse('main:show_main')
+            })
+            response.set_cookie('last_login', str(datetime.datetime.now()))
+            return response
+        else:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Invalid username or password'
+            }, status=401)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during login'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_register(request):
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password1 = data.get('password1', '')
+        password2 = data.get('password2', '')
+        
+        # Validation
+        if not username or not password1 or not password2:
+            return JsonResponse({
+                'success': False, 
+                'error': 'All fields are required'
+            }, status=400)
+        
+        if len(username) < 3:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Username must be at least 3 characters long'
+            }, status=400)
+        
+        if password1 != password2:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Passwords do not match'
+            }, status=400)
+        
+        if len(password1) < 8:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Password must be at least 8 characters long'
+            }, status=400)
+        
+        # Check if username already exists
+        from django.contrib.auth.models import User
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({
+                'success': False, 
+                'error': 'Username already exists'
+            }, status=400)
+        
+        # Create user
+        user = User.objects.create_user(username=username, password=password1)
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Account created successfully!',
+            'redirect_url': reverse('main:login')
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during registration'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_create_product(request):
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+        price = data.get('price')
+        category = data.get('category', '').strip()
+        thumbnail = data.get('thumbnail', '').strip()
+        is_featured = data.get('is_featured', False)
+        
+        # Validation
+        if not name or not description or not price or not category:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Name, description, price, and category are required'
+            }, status=400)
+        
+        if not isinstance(price, (int, float)) or price < 0:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Price must be a positive number'
+            }, status=400)
+        
+        # Create product
+        product = Product.objects.create(
+            name=name,
+            description=description,
+            price=int(price),
+            category=category,
+            thumbnail=thumbnail if thumbnail else '',
+            is_featured=is_featured
+        )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Product created successfully!',
+            'product_id': str(product.id)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during product creation'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_edit_product(request, id):
+    try:
+        product = get_object_or_404(Product, pk=id)
+        data = json.loads(request.body)
+        
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+        price = data.get('price')
+        category = data.get('category', '').strip()
+        thumbnail = data.get('thumbnail', '').strip()
+        is_featured = data.get('is_featured', False)
+        
+        # Validation
+        if not name or not description or not price or not category:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Name, description, price, and category are required'
+            }, status=400)
+        
+        if not isinstance(price, (int, float)) or price < 0:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Price must be a positive number'
+            }, status=400)
+        
+        # Update product
+        product.name = name
+        product.description = description
+        product.price = int(price)
+        product.category = category
+        product.thumbnail = thumbnail if thumbnail else ''
+        product.is_featured = is_featured
+        product.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Product updated successfully!',
+            'product_id': str(product.id)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during product update'
+        }, status=500)
+
 def edit_product(request, id):
     product = get_object_or_404(Product, pk=id)
     form = ProductForm(request.POST or None, instance=product)
@@ -109,3 +353,22 @@ def delete_product(request, id):
     product = get_object_or_404(Product, pk=id)
     product.delete()
     return HttpResponseRedirect(reverse('main:show_main'))
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ajax_delete_product(request, id):
+    try:
+        product = get_object_or_404(Product, pk=id)
+        product_name = product.name
+        product.delete()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Product "{product_name}" deleted successfully!'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': 'An error occurred during product deletion'
+        }, status=500)
